@@ -31,3 +31,9 @@
 - For narrowly scoped requests, prefer the nearest relevant files and the smallest safe diff.
 - Do not introduce broader UX flows, extra cleanup, or cross-cutting changes unless the request clearly supports it.
 - If a broader improvement is tempting, complete the requested narrow scope first and mention the broader option separately.
+
+## Validation and error discipline
+- If validation cannot run, describe the change as unverified.
+- Do not assume correctness from a small or simple diff.
+- Prefer fixes that preserve useful error visibility.
+- Do not silently swallow failures unless the fallback behavior is explicitly intended.
