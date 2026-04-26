@@ -1,3 +1,4 @@
+import { LoadingState } from "@/src/components/common/LoadingState";
 import { ToastViewport } from "@/src/components/common/ToastViewport";
 import { initializeAuth } from "@/src/lib/auth/service";
 import {
@@ -8,15 +9,18 @@ import {
 import { colors } from "@/src/theme/tokens";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
   const router = useRouter();
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    void initializeAuth();
+    void initializeAuth().then(() => {
+      setAuthReady(true);
+    });
     console.log("[APP] Initializing notifications...");
     void initNotifications().then(() => {
       console.log("[APP] Notifications initialized");
@@ -57,6 +61,17 @@ export default function RootLayout() {
       unsubscribe();
     };
   }, [router]);
+
+  if (!authReady) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+        <SafeAreaProvider>
+          <StatusBar style="dark" />
+          <LoadingState message="앱 초기화 중" />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>

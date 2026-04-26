@@ -72,7 +72,8 @@ export async function hydrateAuthState() {
     await removeStoredValue(AUTH_STORAGE_KEY);
   } finally {
     setAuthState({
-      hydrated: true
+      hydrated: true,
+      bootstrapping: true
     });
   }
 }

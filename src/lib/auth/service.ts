@@ -99,24 +99,25 @@ export async function initializeAuth() {
     if (Platform.OS === "web") {
       await restoreWebCookieSession(false);
     }
+    setAuthBootstrapping(false);
     return getAuthState();
   }
-
-  setAuthBootstrapping(true);
 
   try {
     await fetchAndStoreProfile();
   } catch (error) {
-    const refreshed = error instanceof ApiError && error.status === 401
-      ? await refreshSession()
-      : false;
-    if (refreshed) {
-      await fetchAndStoreProfile();
-    } else if (error instanceof ApiError && error.status === 401) {
-      await clearNotificationSubscriptions();
-      await clearAuthState();
+    if (error instanceof ApiError && error.status === 401) {
+      const refreshed = await refreshSession();
+      if (refreshed) {
+        await fetchAndStoreProfile();
+      } else {
+        await clearNotificationSubscriptions();
+        await clearAuthState();
+      }
     } else {
       console.warn("[auth] Failed to hydrate persisted session.", error);
+      await clearNotificationSubscriptions();
+      await clearAuthState();
     }
   } finally {
     setAuthBootstrapping(false);
