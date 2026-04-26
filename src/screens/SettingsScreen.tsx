@@ -20,6 +20,7 @@ import {
 import { logout, refreshProfile } from "@/src/lib/auth/service";
 import { useAuth } from "@/src/lib/auth/useAuth";
 import { notify } from "@/src/lib/toast";
+import { initNotifications, requestPermission, registerForPushToken } from "@/src/lib/notifications/service";
 import { colors, spacing } from "@/src/theme/tokens";
 import type { Keyword } from "@/src/types/settings";
 import { openExternalUrl } from "@/src/utils/browser";
@@ -63,6 +64,21 @@ export function SettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       void refreshData();
+      
+      // FCM 토큰 발급 (푸시 알림 테스트용)
+      void (async () => {
+        try {
+          const permission = await requestPermission();
+          if (permission === "granted") {
+            const token = await registerForPushToken();
+            if (token) {
+              console.log("⭐ FCM TOKEN:", token);
+            }
+          }
+        } catch (e) {
+          console.error("FCM token error:", e);
+        }
+      })();
     }, [refreshData])
   );
 

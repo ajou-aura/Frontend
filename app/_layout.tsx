@@ -2,6 +2,7 @@ import { ToastViewport } from "@/src/components/common/ToastViewport";
 import { initializeAuth } from "@/src/lib/auth/service";
 import {
   getInitialNotificationRoutePayload,
+  initNotifications,
   listenForNotificationOpen
 } from "@/src/lib/notifications/service";
 import { colors } from "@/src/theme/tokens";
@@ -16,6 +17,10 @@ export default function RootLayout() {
 
   useEffect(() => {
     void initializeAuth();
+    console.log("[APP] Initializing notifications...");
+    void initNotifications().then(() => {
+      console.log("[APP] Notifications initialized");
+    });
   }, []);
 
   useEffect(() => {

@@ -5,6 +5,20 @@ import { getStoredValue, setStoredValue } from "@/src/lib/storage/kv";
 import { getTypeMode, listDepartments } from "@/src/features/settings/api";
 import { typeTopic, userTopic } from "@/src/lib/notifications/topics";
 
+// Firebase Messaging for foreground notifications
+let messagingModule: typeof import("@react-native-firebase/messaging") | null = null;
+
+async function getMessaging() {
+  if (messagingModule) return messagingModule;
+  try {
+    messagingModule = await import("@react-native-firebase/messaging");
+    return messagingModule;
+  } catch (e) {
+    console.log("[FCM] Firebase messaging not available");
+    return null;
+  }
+}
+
 type PermissionState = "granted" | "denied" | "unavailable" | "unknown";
 
 type NotificationState = {
@@ -58,15 +72,19 @@ async function getNotificationsModule() {
     return Notifications;
   }
 
+  console.log("[FCM] Setting notification handler...");
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false
-    })
+    handleNotification: async () => {
+      return {
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false
+      };
+    }
   });
   notificationHandlerConfigured = true;
+  console.log("[FCM] Notification handler configured");
 
   return Notifications;
 }
@@ -117,14 +135,60 @@ export async function initNotifications() {
 
   const Notifications = await getNotificationsModule();
   if (!Notifications) {
+    console.log("[FCM] Notifications module not available");
     return;
   }
+
+  console.log("[FCM] Initializing notifications...");
 
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
       name: "default",
-      importance: Notifications.AndroidImportance.HIGH
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#FF231F7C"
     });
+    console.log("[FCM] Notification channel created");
+  }
+
+  // Foreground notification received listener (expo-notifications)
+  console.log("[FCM] Registering foreground listener...");
+  const subscription = Notifications.addNotificationReceivedListener((notification) => {
+    console.log("[FCM] ⭐ NOTIFICATION RECEIVED IN FOREGROUND:", JSON.stringify(notification, null, 2));
+  });
+  console.log("[FCM] Foreground listener registered:", subscription);
+
+  // Firebase Messaging foreground handler
+  const messaging = await getMessaging();
+  if (messaging) {
+    console.log("[FCM] Setting up Firebase messaging...");
+    messaging.default().setBackgroundMessageHandler(async remoteMessage => {
+      console.log("[FCM] Background message:", remoteMessage);
+    });
+    messaging.default().onMessage(async remoteMessage => {
+      console.log("[FCM] ⭐⭐⭐ FOREGROUND MESSAGE:", JSON.stringify(remoteMessage, null, 2));
+      try {
+        const notificationId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: remoteMessage.notification?.title || "AURA",
+            body: remoteMessage.notification?.body || "",
+            data: remoteMessage.data,
+            sound: "default",
+            priority: Notifications.AndroidNotificationPriority.HIGH
+          },
+          trigger: null
+        });
+        console.log("[FCM] Local notification scheduled with id:", notificationId);
+
+        setTimeout(async () => {
+          const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+          console.log("[FCM] Scheduled notifications:", scheduledNotifications.length);
+        }, 1000);
+      } catch (err) {
+        console.error("[FCM] Failed to show notification:", err);
+      }
+    });
+    console.log("[FCM] Firebase messaging configured");
   }
 
   state.initialized = true;
